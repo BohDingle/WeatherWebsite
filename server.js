@@ -55,7 +55,7 @@ app.get('/fetch-weather', async (req, res) => {
 
 // Serve weather logs to the frontend
 app.get('/api/weather', (req, res) => {
-    db.all('SELECT * FROM weather ORDER BY timestamp DESC LIMIT 10', [], (err, rows) => {
+    db.all('SELECT * FROM weather_logs ORDER BY timestamp DESC LIMIT 10', [], (err, rows) => {
         if (err) {
             console.error('Error retrieving data from database:', err.message);
             res.status(500).json({ error: 'Failed to retrieve data' });
