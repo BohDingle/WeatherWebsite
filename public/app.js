@@ -44,40 +44,25 @@ document.addEventListener('DOMContentLoaded', async () => {
 // Function to map weather descriptions to image paths
 function getWeatherImage(description) {
     if (description.includes('rain')) return '/icons/rainy.png';
-    if (description.includes('cloud')) return '/icons/cloudy.png';
+    if (description.includes('scattered')) return '/icons/cloudwsun.png';
     if (description.includes('clear')) return '/icons/sunny.png';
     if (description.includes('sunny')) return '/icons/sunny.png';
-    if (description.includes('snow')) return '/icons/snowy.png';
+    if (description.includes('overcast')) return '/icons/cloudy.png';
     return '/images/default.png'; // Fallback image
 }
 
 // Register service worker and subscribe to push notifications
-if ('serviceWorker' in navigator && 'PushManager' in window) {
-    navigator.serviceWorker.register('/service-worker.js').then((registration) => {
-        console.log('Service Worker registered');
-
-        // Subscribe to push notifications
-        registration.pushManager.subscribe({
-            userVisibleOnly: true,
-            applicationServerKey: urlBase64ToUint8Array('BMSLuANQ16X2iUAsYb5tYiiKf68Ef7zIPlo3fbotVTfyl0ts4-qo5xhuDgrT4-WaoX5-Dbnxy1vLwKUVVfVS_6U'), // Use the same public key from server
-        }).then((subscription) => {
-            // Send subscription to the server
-            fetch('/subscribe', {
-                method: 'POST',
-                body: JSON.stringify(subscription),
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-            }).then((response) => {
-                if (response.ok) {
-                    console.log('Subscription added successfully');
-                }
-            });
-        }).catch((err) => {
-            console.error('Error subscribing to push notifications', err);
+if ('serviceWorker' in navigator) {
+    navigator.serviceWorker
+        .register('/service-worker.js')
+        .then((registration) => {
+            console.log('Service Worker registered:', registration);
+        })
+        .catch((error) => {
+            console.error('Service Worker registration failed:', error);
         });
-    });
 }
+
 
 // Utility function to convert the VAPID key to the correct format
 function urlBase64ToUint8Array(base64String) {

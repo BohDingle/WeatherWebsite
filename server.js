@@ -6,10 +6,11 @@ const path = require('path');
 const webPush = require('web-push'); // Import the web-push library
 const app = express();
 const PORT = 3000;
-
+const oneDay = 24 * 60 * 60 * 1000; // One day in milliseconds
 const apiKey = '07fde61765004f66ba2fb649aa9e1fc7';
 const dbPath = path.join(__dirname, 'database.db');
-
+const apicache = require('apicache');
+const cache = apicache.middleware;
 
 // Use the keys you generated
 const vapidPublicKey = 'BMSLuANQ16X2iUAsYb5tYiiKf68Ef7zIPlo3fbotVTfyl0ts4-qo5xhuDgrT4-WaoX5-Dbnxy1vLwKUVVfVS_6U';
@@ -56,6 +57,7 @@ async function fetchWeatherData() {
         const { list } = response.data;
         const dailyForecast = {};
 
+        // Parse the API response and prepare daily forecast data
         list.forEach((entry) => {
             const date = new Date(entry.dt * 1000).toISOString().split('T')[0];
             if (!dailyForecast[date]) {
@@ -66,16 +68,29 @@ async function fetchWeatherData() {
             }
         });
 
-        Object.keys(dailyForecast).forEach((date) => {
-            const { temp, description } = dailyForecast[date];
-            db.run(
-                `INSERT OR IGNORE INTO weather_logs (city, weather, temperature, date) VALUES (?, ?, ?, ?)`,
-                [city, description, temp, date],
-                (err) => {
-                    if (err) console.error('Error inserting data:', err.message);
-                    else console.log(`Inserted data for ${date}`);
-                }
-            );
+        // Delete old data before inserting new data
+        db.run(`DELETE FROM weather_logs`, (err) => {
+            if (err) {
+                console.error('Error deleting old data:', err.message);
+                return;
+            }
+            console.log('Old weather data deleted successfully.');
+
+            // Insert the new data into the database
+            Object.keys(dailyForecast).forEach((date) => {
+                const { temp, description } = dailyForecast[date];
+                db.run(
+                    `INSERT INTO weather_logs (city, weather, temperature, date) VALUES (?, ?, ?, ?)`,
+                    [city, description, temp, date],
+                    (err) => {
+                        if (err) {
+                            console.error('Error inserting data:', err.message);
+                        } else {
+                            console.log(`Inserted data for ${date}`);
+                        }
+                    }
+                );
+            });
         });
 
         console.log('Weather data saved to database.');
@@ -85,7 +100,7 @@ async function fetchWeatherData() {
 }
 
 // Schedule cron job
-cron.schedule('0 9 * * *', fetchWeatherData); // Run at 9 AM daily
+cron.schedule('* * * * *', fetchWeatherData); // Run at 9 AM daily
 
 // API to get weather data
 app.get('/api/weather', (req, res) => {
@@ -120,13 +135,21 @@ function sendPushNotification() {
             title: 'Weather Update',
             body: 'New weather data is available!',
         });
-
         webPush.sendNotification(subscription, payload).catch((err) => {
             console.error('Error sending notification:', err);
         });
     });
 }
 
+app.use(
+    express.static(path.join(__dirname, 'public'), {
+        maxAge: oneDay, // Cache static files for one day
+    })
+);
+app.set('etag', true);
+app.get('/api/weather', cache('5 minutes'), (req, res) => {
+    fetchWeatherData();
+});
 // Example trigger to send push notification (can be done based on weather data updates)
 cron.schedule('* * * * *', sendPushNotification); // Send notifications daily at 9 AM
 
