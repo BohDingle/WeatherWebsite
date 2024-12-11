@@ -1,25 +1,32 @@
-// Fetch weather data from the server and populate the cards
-async function fetchWeatherLogs() {
+document.addEventListener('DOMContentLoaded', async () => {
+    const weatherContainer = document.getElementById('weather-container');
+
     try {
-        const response = await fetch('/api/weather'); // Fetch data from the API
+        const response = await fetch('/api/weather');
         const weatherLogs = await response.json();
 
-        const container = document.getElementById('weather-container');
-        container.innerHTML = ''; // Clear previous content
+        // Clear previous content
+        weatherContainer.innerHTML = '';
 
-        // Iterate through weather logs and create cards
+        // Iterate through weather logs and create weather cards
         weatherLogs.forEach((log) => {
             const card = document.createElement('div');
             card.className = 'weather-card';
 
-            // Format the timestamp
-            const date = new Date(log.timestamp);
-            const formattedDate = date.toLocaleDateString();
-            const formattedDay = date.toLocaleDateString('en-US', { weekday: 'long' });
+            // Format the date
+            const date = new Date(log.date);
+            const formattedDate = date.toLocaleDateString('en-US', {
+                month: 'long',
+                day: 'numeric',
+            });
+            const formattedDay = date.toLocaleDateString('en-US', {
+                weekday: 'long',
+            });
 
-            // Weather icon logic based on description
+            // Determine the weather icon class
             const weatherIcon = getWeatherIconClass(log.weather);
 
+            // Add content to the weather card
             card.innerHTML = `
                 <h2>${formattedDate}</h2>
                 <h3>${formattedDay}, ${log.city}</h3>
@@ -28,25 +35,23 @@ async function fetchWeatherLogs() {
                 <p>${log.weather}</p>
             `;
 
-            container.appendChild(card);
+            // Append the card to the container
+            weatherContainer.appendChild(card);
         });
     } catch (error) {
         console.error('Error fetching weather logs:', error);
     }
-}
+});
 
 // Function to map weather descriptions to icon classes
 function getWeatherIconClass(description) {
-    if (description.includes('rain')) {
+    if (description.toLowerCase().includes('rain')) {
         return 'rainy';
-    } else if (description.includes('cloud')) {
+    } else if (description.toLowerCase().includes('cloud')) {
         return 'cloudy';
-    } else if (description.includes('sun')) {
+    } else if (description.toLowerCase().includes('sun')) {
         return 'sunny';
     } else {
         return 'default-icon'; // Fallback icon
     }
 }
-
-// Call the function on page load
-fetchWeatherLogs();

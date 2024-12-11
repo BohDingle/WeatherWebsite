@@ -1,74 +1,94 @@
 const express = require('express');
 const sqlite3 = require('sqlite3').verbose();
 const axios = require('axios');
-
+const cron = require('node-cron');
+const path = require('path');
 const app = express();
 const PORT = 3000;
 
-// Your OpenWeather API key
-const apiKey = 'a3f21f5c9954e8a98b723c88b5d6832d';
-const dbFile = 'database.db';
+const apiKey = '07fde61765004f66ba2fb649aa9e1fc7';
+const dbPath = path.join(__dirname, 'database.db');
 
-// SQLite database connection
-const db = new sqlite3.Database(dbFile, (err) => {
-    if (err) {
-        console.error('Error opening database:', err.message);
-    } else {
-        console.log('Connected to the SQLite database.');
-    }
+// SQLite connection
+const db = new sqlite3.Database(dbPath, (err) => {
+    if (err) console.error('Error opening database:', err.message);
+    else console.log('Connected to SQLite database at', dbPath);
 });
 
+// Create table
+db.run(
+    `CREATE TABLE IF NOT EXISTS weather_logs (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        city TEXT,
+        weather TEXT,
+        temperature REAL,
+        date TEXT UNIQUE
+    )`
+);
 
-// Fetch and store weather data for a specific city
-app.get('/fetch-weather', async (req, res) => {
-    const city = req.query.city || 'Tokyo'; // Default city is Tokyo
-    const apiUrl = `https://api.openweathermap.org/data/2.5/weather?q=${city}&appid=${apiKey}&units=metric`;
+// Fetch and store weather data
+async function fetchWeatherData() {
+    const city = 'Sydney';
+    const lat = -33.8688;
+    const lon = 151.2093;
+    const apiUrl = `https://api.openweathermap.org/data/2.5/forecast?lat=${lat}&lon=${lon}&appid=${apiKey}&units=metric`;
 
     try {
         const response = await axios.get(apiUrl);
-        const { name, main: { temp }, weather } = response.data;
-        const description = weather[0].description;
+        const { list } = response.data;
+        const dailyForecast = {};
 
-        // Save the weather data to the database
-        db.run(
-            `INSERT INTO weather_logs (city, weather, temperature) VALUES (?, ?, ?)`,
-            [name, description, temp],
-            function (err) {
-                if (err) {
-                    console.error('Error inserting data into database:', err.message);
-                    res.status(500).json({ error: 'Failed to save data to database' });
-                } else {
-                    console.log('Weather data saved to database.');
-                    res.json({
-                        success: true,
-                        message: 'Weather data fetched and saved successfully',
-                        data: { city: name, weather: description, temperature: temp }
-                    });
-                }
+        list.forEach((entry) => {
+            const date = new Date(entry.dt * 1000).toISOString().split('T')[0];
+            if (!dailyForecast[date]) {
+                dailyForecast[date] = {
+                    temp: entry.main.temp,
+                    description: entry.weather[0].description,
+                };
             }
-        );
+        });
+
+        Object.keys(dailyForecast).forEach((date) => {
+            const { temp, description } = dailyForecast[date];
+            db.run(
+                `INSERT OR IGNORE INTO weather_logs (city, weather, temperature, date) VALUES (?, ?, ?, ?)`,
+                [city, description, temp, date],
+                (err) => {
+                    if (err) console.error('Error inserting data:', err.message);
+                    else console.log(`Inserted data for ${date}`);
+                }
+            );
+        });
+
+        console.log('Weather data saved to database.');
     } catch (error) {
-        console.error('Error fetching weather data:', error.message);
-        res.status(500).json({ error: 'Failed to fetch weather data' });
+        console.error('Error fetching weather data:', error.response?.data || error.message);
     }
-});
+}
 
-// Serve weather logs to the frontend
+// Schedule cron job
+cron.schedule('0 9 * * *', fetchWeatherData); // Run at 9 AM daily
+
+// Serve data API
 app.get('/api/weather', (req, res) => {
-    db.all('SELECT * FROM weather ORDER BY timestamp DESC LIMIT 10', [], (err, rows) => {
-        if (err) {
-            console.error('Error retrieving data from database:', err.message);
-            res.status(500).json({ error: 'Failed to retrieve data' });
-        } else {
-            res.json(rows);
+    db.all(
+        `SELECT * FROM weather_logs WHERE date >= DATE('now') ORDER BY date ASC`,
+        [],
+        (err, rows) => {
+            if (err) {
+                console.error('Error retrieving data:', err.message);
+                res.status(500).json({ error: 'Failed to retrieve data' });
+            } else {
+                res.json(rows);
+            }
         }
-    });
+    );
 });
 
-// Serve static frontend files
+// Serve static files
 app.use(express.static('public'));
 
-// Start the server
+// Start server
 app.listen(PORT, () => {
     console.log(`Server running at http://localhost:${PORT}`);
 });

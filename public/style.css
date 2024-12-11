@@ -3,11 +3,13 @@ body {
   margin: 0;
   padding: 0;
   background-color: #f0f8ff;
+  color: #333;
 }
 
 h1 {
   text-align: center;
-  margin: 20px 0;
+  margin-top: 20px;
+  font-size: 2.5rem;
 }
 
 .weather-container {
@@ -15,44 +17,35 @@ h1 {
   flex-wrap: wrap;
   justify-content: center;
   gap: 20px;
-  padding: 20px;
+  margin: 20px;
 }
 
 .weather-card {
-  background: white;
-  border: 1px solid #ccc;
+  background-color: #ffffff;
   border-radius: 10px;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  width: 250px;
   padding: 20px;
   text-align: center;
-  width: 250px;
 }
 
-.weather-card h2 {
-  font-size: 1.2em;
-  margin-bottom: 10px;
+.weather-icon {
+  font-size: 3rem;
+  margin: 10px 0;
 }
 
-.weather-card h3 {
-  font-size: 1em;
-  color: gray;
-  margin-bottom: 10px;
+.sunny {
+  color: #ffcc00;
 }
 
-.weather-card .weather-icon {
-  width: 50px;
-  height: 50px;
-  margin: 10px auto;
+.cloudy {
+  color: #999;
 }
 
-.weather-card .rainy {
-  background: url('icons/rainy.png') no-repeat center / contain;
+.rainy {
+  color: #00bfff;
 }
 
-.weather-card .cloudy {
-  background: url('icons/cloudy.png') no-repeat center / contain;
-}
-
-.weather-card .sunny {
-  background: url('icons/sunny.png') no-repeat center / contain;
+.default-icon {
+  color: #ccc;
 }
