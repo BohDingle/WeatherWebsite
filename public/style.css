@@ -1,51 +1,64 @@
 body {
-  font-family: Arial, sans-serif;
-  margin: 0;
-  padding: 0;
-  background-color: #f0f8ff;
-  color: #333;
+    font-family: Arial, sans-serif;
+    margin: 20px;
+    background-color: #f0f8ff;
 }
 
 h1 {
-  text-align: center;
-  margin-top: 20px;
-  font-size: 2.5rem;
+    text-align: center;
+    font-size: 2.5em;
+    color: #333;
+    margin-bottom: 20px;
 }
 
-.weather-container {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: 20px;
-  margin: 20px;
+#weather-container {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 20px;
 }
 
 .weather-card {
-  background-color: #ffffff;
-  border-radius: 10px;
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-  width: 250px;
-  padding: 20px;
-  text-align: center;
+    background-color: #ffffff;
+    border: 1px solid #ddd;
+    border-radius: 10px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    width: 200px;
+    padding: 15px;
+    text-align: center;
+    transition: transform 0.2s ease;
 }
 
-.weather-icon {
-  font-size: 3rem;
-  margin: 10px 0;
+.weather-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 6px 10px rgba(0, 0, 0, 0.15);
 }
 
-.sunny {
-  color: #ffcc00;
+.weather-card h2 {
+    font-size: 1.2em;
+    color: #555;
+    margin: 10px 0;
 }
 
-.cloudy {
-  color: #999;
+.weather-card h3 {
+    font-size: 1em;
+    color: #777;
+    margin: 5px 0;
 }
 
-.rainy {
-  color: #00bfff;
+.weather-card .weather-icon {
+    font-size: 2.5em;
+    margin: 10px 0;
 }
 
-.default-icon {
-  color: #ccc;
+.weather-card p {
+    font-size: 1em;
+    color: #333;
+    margin: 5px 0;
+}
+.weather-image {
+  width: 100px;
+  height: 100px;
+  object-fit: contain;
+  margin: 10px auto;
 }

@@ -11,10 +11,12 @@ const dbPath = path.join(__dirname, 'database.db');
 
 // SQLite connection
 const db = new sqlite3.Database(dbPath, (err) => {
-    if (err) console.error('Error opening database:', err.message);
-    else console.log('Connected to SQLite database at', dbPath);
+    if (err) {
+        console.error('Error opening database:', err.message);
+    } else {
+        console.log('Connected to the SQLite database at', dbPath);
+    }
 });
-
 // Create table
 db.run(
     `CREATE TABLE IF NOT EXISTS weather_logs (
@@ -23,7 +25,7 @@ db.run(
         weather TEXT,
         temperature REAL,
         date TEXT UNIQUE
-    )`
+    )`  
 );
 
 // Fetch and store weather data
