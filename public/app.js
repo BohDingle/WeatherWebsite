@@ -50,3 +50,46 @@ function getWeatherImage(description) {
     if (description.includes('snow')) return '/icons/snowy.png';
     return '/images/default.png'; // Fallback image
 }
+
+// Register service worker and subscribe to push notifications
+if ('serviceWorker' in navigator && 'PushManager' in window) {
+    navigator.serviceWorker.register('/service-worker.js').then((registration) => {
+        console.log('Service Worker registered');
+
+        // Subscribe to push notifications
+        registration.pushManager.subscribe({
+            userVisibleOnly: true,
+            applicationServerKey: urlBase64ToUint8Array('BMSLuANQ16X2iUAsYb5tYiiKf68Ef7zIPlo3fbotVTfyl0ts4-qo5xhuDgrT4-WaoX5-Dbnxy1vLwKUVVfVS_6U'), // Use the same public key from server
+        }).then((subscription) => {
+            // Send subscription to the server
+            fetch('/subscribe', {
+                method: 'POST',
+                body: JSON.stringify(subscription),
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+            }).then((response) => {
+                if (response.ok) {
+                    console.log('Subscription added successfully');
+                }
+            });
+        }).catch((err) => {
+            console.error('Error subscribing to push notifications', err);
+        });
+    });
+}
+
+// Utility function to convert the VAPID key to the correct format
+function urlBase64ToUint8Array(base64String) {
+    const padding = '='.repeat((4 - base64String.length % 4) % 4);
+    const base64 = (base64String + padding)
+        .replace(/-/g, '+')
+        .replace(/_/g, '/');
+    const rawData = window.atob(base64);
+    const outputArray = new Uint8Array(rawData.length);
+
+    for (let i = 0; i < rawData.length; ++i) {
+        outputArray[i] = rawData.charCodeAt(i);
+    }
+    return outputArray;
+}
