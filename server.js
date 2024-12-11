@@ -27,6 +27,8 @@ db.run(
         date TEXT UNIQUE
     )`  
 );
+const webPush = require('web-push');
+
 
 // Fetch and store weather data
 async function fetchWeatherData() {
@@ -87,8 +89,8 @@ app.get('/api/weather', (req, res) => {
     );
 });
 
-// Serve static files
-app.use(express.static('public'));
+// Serve static files from the "public" directory
+app.use(express.static(path.join(__dirname, 'public')));
 
 // Start server
 app.listen(PORT, () => {
