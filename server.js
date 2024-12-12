@@ -3,160 +3,152 @@ const sqlite3 = require('sqlite3').verbose();
 const axios = require('axios');
 const cron = require('node-cron');
 const path = require('path');
-const webPush = require('web-push'); // Import the web-push library
+const webPush = require('web-push');
+const apicache = require('apicache');
+
 const app = express();
 const PORT = 3000;
-const oneDay = 24 * 60 * 60 * 1000; // One day in milliseconds
-const apiKey = '07fde61765004f66ba2fb649aa9e1fc7';
-const dbPath = path.join(__dirname, 'database.db');
-const apicache = require('apicache');
-const cache = apicache.middleware;
+const CACHE_DURATION = '5 minutes';
+const API_KEY = '07fde61765004f66ba2fb649aa9e1fc7';
+const DB_PATH = path.join(__dirname, 'database.db');
+const WEATHER_API_URL = `https://api.openweathermap.org/data/2.5/forecast`;
+const CACHE = apicache.middleware;
 
-// Use the keys you generated
-const vapidPublicKey = 'BMSLuANQ16X2iUAsYb5tYiiKf68Ef7zIPlo3fbotVTfyl0ts4-qo5xhuDgrT4-WaoX5-Dbnxy1vLwKUVVfVS_6U';
-const vapidPrivateKey = 'r87vm9wCUgV0yrVivmOna0A3nrULVhRV3fGGCdqNkyg';
+// VAPID keys for push notifications
+const VAPID_PUBLIC_KEY = 'BA5hCLGNy8sMVOWuI7qm3RNmD-Bj220NFiQq0s07W4MMy-yCBWV3J48VBgF4CjEosZPDOsvjMaPOG-blTeOp5E0';
+const VAPID_PRIVATE_KEY = 'f9yMfjfYE-I0REf16-BoUN1zgCND26LlEIia63s-q2I';
+webPush.setVapidDetails('mailto:liuk6596@gmail.com', VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY);
 
-// Set VAPID details
-webPush.setVapidDetails(
-  'mailto:liuk6596@gmail.com', // Replace with your email
-  vapidPublicKey,
-  vapidPrivateKey
-);
-
-
-const db = new sqlite3.Database(dbPath, (err) => {
+const db = new sqlite3.Database(DB_PATH, (err) => {
     if (err) {
         console.error('Error opening database:', err.message);
     } else {
-        console.log('Connected to the SQLite database at', dbPath);
+        console.log('Connected to the SQLite database');
+        initDatabase();
     }
 });
 
-// Create table for storing weather logs
-db.run(
-    `CREATE TABLE IF NOT EXISTS weather_logs (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        city TEXT,
-        weather TEXT,
-        temperature REAL,
-        date TEXT UNIQUE
-    )`
-);
+// Initialize database
+function initDatabase() {
+    db.run(
+        `CREATE TABLE IF NOT EXISTS weather_logs (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            city TEXT,
+            weather TEXT,
+            temperature REAL,
+            date TEXT UNIQUE
+        )`
+    );
+}
 
-const pushSubscriptions = []; // Store push subscriptions
+const pushSubscriptions = []; // In-memory storage for push subscriptions
 
 // Fetch and store weather data
 async function fetchWeatherData() {
     const city = 'Sydney';
-    const lat = -33.8688;
-    const lon = 151.2093;
-    const apiUrl = `https://api.openweathermap.org/data/2.5/forecast?lat=${lat}&lon=${lon}&appid=${apiKey}&units=metric`;
+    const params = {
+        lat: -33.8688,
+        lon: 151.2093,
+        appid: API_KEY,
+        units: 'metric',
+    };
 
     try {
-        const response = await axios.get(apiUrl);
-        const { list } = response.data;
-        const dailyForecast = {};
+        const { data } = await axios.get(WEATHER_API_URL, { params });
+        const dailyForecast = extractDailyForecast(data.list);
 
-        // Parse the API response and prepare daily forecast data
-        list.forEach((entry) => {
-            const date = new Date(entry.dt * 1000).toISOString().split('T')[0];
-            if (!dailyForecast[date]) {
-                dailyForecast[date] = {
-                    temp: entry.main.temp,
-                    description: entry.weather[0].description,
-                };
-            }
-        });
+        db.serialize(() => {
+            db.run(`DELETE FROM weather_logs`);
+            const stmt = db.prepare(
+                `INSERT INTO weather_logs (city, weather, temperature, date) VALUES (?, ?, ?, ?)`
+            );
 
-        // Delete old data before inserting new data
-        db.run(`DELETE FROM weather_logs`, (err) => {
-            if (err) {
-                console.error('Error deleting old data:', err.message);
-                return;
-            }
-            console.log('Old weather data deleted successfully.');
-
-            // Insert the new data into the database
-            Object.keys(dailyForecast).forEach((date) => {
-                const { temp, description } = dailyForecast[date];
-                db.run(
-                    `INSERT INTO weather_logs (city, weather, temperature, date) VALUES (?, ?, ?, ?)`,
-                    [city, description, temp, date],
-                    (err) => {
-                        if (err) {
-                            console.error('Error inserting data:', err.message);
-                        } else {
-                            console.log(`Inserted data for ${date}`);
-                        }
-                    }
-                );
+            Object.entries(dailyForecast).forEach(([date, { temp, description }]) => {
+                stmt.run(city, description, temp, date);
             });
-        });
 
-        console.log('Weather data saved to database.');
+            stmt.finalize();
+            console.log('Weather data updated in the database');
+        });
     } catch (error) {
         console.error('Error fetching weather data:', error.response?.data || error.message);
     }
 }
 
-// Schedule cron job
-cron.schedule('* * * * *', fetchWeatherData); // Run at 9 AM daily
-
-// API to get weather data
-app.get('/api/weather', (req, res) => {
-    db.all(
-        `SELECT * FROM weather_logs WHERE date >= DATE('now') ORDER BY date ASC`,
-        [],
-        (err, rows) => {
-            if (err) {
-                console.error('Error retrieving data:', err.message);
-                res.status(500).json({ error: 'Failed to retrieve data' });
-            } else {
-                res.json(rows);
-            }
+// Extract daily weather forecast from API response
+function extractDailyForecast(data) {
+    const dailyForecast = {};
+    data.forEach((entry) => {
+        const date = new Date(entry.dt * 1000).toISOString().split('T')[0];
+        if (Object.keys(dailyForecast).length < 5 && !dailyForecast[date]) {
+            dailyForecast[date] = {
+                temp: entry.main.temp,
+                description: entry.weather[0].description,
+            };
         }
-    );
-});
+    });
+    return dailyForecast;
+}
 
-// API for handling subscription
-app.post('/subscribe', express.json(), (req, res) => {
-    const subscription = req.body;
+// Send push notifications to subscribers
+function sendPushNotifications() {
+    if (pushSubscriptions.length === 0) {
+        console.log('No subscriptions available');
+        return;
+    }
 
-    // Store subscription in the pushSubscriptions array
-    pushSubscriptions.push(subscription);
-
-    res.status(201).json({ message: 'Subscription added successfully' });
-});
-
-// Send push notifications to all subscribers
-function sendPushNotification() {
-    pushSubscriptions.forEach((subscription) => {
+    pushSubscriptions.forEach((subscription, index) => {
         const payload = JSON.stringify({
             title: 'Weather Update',
             body: 'New weather data is available!',
         });
-        webPush.sendNotification(subscription, payload).catch((err) => {
-            console.error('Error sending notification:', err);
-        });
+
+        webPush.sendNotification(subscription, payload)
+            .then(() => {
+                console.log(`Notification sent to subscriber ${index}`);
+            })
+            .catch((err) => {
+                console.error('Error sending notification:', err);
+            });
     });
 }
 
-app.use(
-    express.static(path.join(__dirname, 'public'), {
-        maxAge: oneDay, // Cache static files for one day
-    })
-);
-app.set('etag', true);
-app.get('/api/weather', cache('5 minutes'), (req, res) => {
-    fetchWeatherData();
+
+
+// API: Fetch weather data from the database
+app.get('/api/weather', CACHE(CACHE_DURATION), (req, res) => {
+    const query = `SELECT * FROM weather_logs WHERE date >= DATE('now') ORDER BY date ASC`;
+    db.all(query, [], (err, rows) => {
+        if (err) {
+            console.error('Error retrieving weather data:', err.message);
+            res.status(500).json({ error: 'Failed to retrieve data' });
+        } else {
+            res.json(rows);
+        }
+    });
 });
-// Example trigger to send push notification (can be done based on weather data updates)
-cron.schedule('* * * * *', sendPushNotification); // Send notifications daily at 9 AM
 
-// Serve static files from the "public" directory
-app.use(express.static(path.join(__dirname, 'public')));
+// API: Save push subscriptions
+app.post('/subscribe', express.json(), (req, res) => {
+    const subscription = req.body;
 
-// Start the server
+    if (!subscription || !subscription.endpoint) {
+        return res.status(400).json({ error: 'Invalid subscription' });
+    }
+
+    pushSubscriptions.push(subscription);
+    console.log('Subscription saved:', subscription);
+    res.status(201).json({ message: 'Subscription added successfully' });
+});
+
+// Schedule tasks
+cron.schedule('0 9 * * *', fetchWeatherData); // Fetch weather daily at 9 AM
+cron.schedule('* * * * *', sendPushNotifications); // Send notifications daily at 10 AM
+
+// Serve static files
+app.use(express.static(path.join(__dirname, 'public'), { maxAge: '1d' }));
+
+// Start server
 app.listen(PORT, () => {
     console.log(`Server running at http://localhost:${PORT}`);
 });

@@ -1,8 +1,30 @@
+const CACHE_NAME = 'weather-app-v3';
+const ASSETS = [
+    '/',
+    '/index.html',
+    '/app.js',
+    '/style.css',
+    '/icons/rainy.png',
+    '/icons/cloudy.png',
+    '/icons/sunny.png',
+    '/icons/default.png',
+];
+
+
+// Handle Push Notifications
 self.addEventListener('push', (event) => {
-    const data = event.data.json();
-    const title = data.title;
+    let data;
+
+    try {
+        data = event.data.json();  // Parse the push message as JSON
+    } catch (e) {
+        console.error('Failed to parse push message data as JSON:', e);
+        return;
+    }
+
+    const title = data.title || 'Default Title';
     const options = {
-        body: data.body,
+        body: data.body || 'No body text provided',
         icon: '/icons/weather-icon.png',
         badge: '/icons/weather-icon.png',
     };
@@ -10,28 +32,33 @@ self.addEventListener('push', (event) => {
     event.waitUntil(self.registration.showNotification(title, options));
 });
 
-const CACHE_NAME = 'weather-app-v1';
-const ASSETS = [
-    '/',
-    '/index.html',
-    '/app.js',
-    '/styles.css',
-    '/icons/rainy.png',
-    '/icons/cloudy.png',
-    '/icons/sunny.png',
-];
 
-// Install Service Worker
+// Install Service Worker and Cache Assets
 self.addEventListener('install', (event) => {
     event.waitUntil(
-        caches.open(CACHE_NAME).then((cache) => {
-            console.log('Caching app assets');
-            return cache.addAll(ASSETS);
+        caches.open(CACHE_NAME).then(async (cache) => {
+            try {
+                await Promise.all(
+                    ASSETS.map(async (asset) => {
+                        const response = await fetch(asset);
+                        if (response.ok) {
+                            await cache.put(asset, response);
+                        } else {
+                            console.error(`Failed to cache: ${asset}`);
+                        }
+                    })
+                );
+                console.log('All assets cached successfully');
+            } catch (error) {
+                console.error('Error caching assets:', error);
+            }
         })
     );
+    self.skipWaiting(); // Force the new Service Worker to activate immediately
 });
 
-// Activate Service Worker
+
+// Activate Service Worker and Clear Old Caches
 self.addEventListener('activate', (event) => {
     event.waitUntil(
         caches.keys().then((cacheNames) => {
@@ -45,13 +72,20 @@ self.addEventListener('activate', (event) => {
             );
         })
     );
+    self.clients.claim(); // Force the new Service Worker to take control immediately
 });
 
-// Fetch Event - Serve from Cache
+// Fetch Event - Serve from Cache or Network
 self.addEventListener('fetch', (event) => {
+    console.log('Fetching:', event.request.url); // Log the request URL to debug
+
     event.respondWith(
         caches.match(event.request).then((cachedResponse) => {
-            return cachedResponse || fetch(event.request);
+            // If the resource is in the cache, return it, otherwise, fetch it
+            return cachedResponse || fetch(event.request).catch((err) => {
+                console.error('Fetch failed:', err);
+                return new Response('Network error', { status: 503 }); // Optional: handle error with a fallback response
+            });
         })
     );
 });
