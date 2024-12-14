@@ -141,7 +141,7 @@ app.post('/subscribe', express.json(), (req, res) => {
 });
 
 // Schedule tasks
-cron.schedule('* * * * *', fetchWeatherData); // Fetch weather daily at 9 AM
+cron.schedule('0 9 * * *', fetchWeatherData); // Fetch weather daily at 9 AM
 cron.schedule('0 9 * * *', sendPushNotifications); // Send notifications daily at 10 AM
 
 // Serve static files

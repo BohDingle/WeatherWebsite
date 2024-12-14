@@ -1,8 +1,13 @@
 const vapidPublicKey = 'BA5hCLGNy8sMVOWuI7qm3RNmD-Bj220NFiQq0s07W4MMy-yCBWV3J48VBgF4CjEosZPDOsvjMaPOG-blTeOp5E0';
+let currentStartIndex = 0; // Track the current start index for sliding weather cards
+
 document.addEventListener('DOMContentLoaded', async () => {
     try {
         const weatherLogs = await fetchWeatherData();
         renderWeatherCards(weatherLogs);
+
+        // Initialize navigation
+        initializeNavigation(weatherLogs);
     } catch (error) {
         console.error('Error initializing weather app:', error);
     }
@@ -23,7 +28,7 @@ async function fetchWeatherData() {
     }
 }
 
-// Render weather cards dynamically
+// Render weather cards, keeping only 3 visible at a time
 function renderWeatherCards(weatherLogs) {
     const weatherContainer = document.getElementById('weather-container');
     weatherContainer.innerHTML = ''; // Clear previous content
@@ -32,6 +37,11 @@ function renderWeatherCards(weatherLogs) {
         const card = createWeatherCard(log);
         weatherContainer.appendChild(card);
     });
+
+    // Apply a translation to the weather container for the slide effect
+    const translateX = -currentStartIndex * 102 / 3; // Adjust based on how many cards are visible
+    const carousel = document.querySelector('.carousel');
+    carousel.style.transform = `translateX(${translateX}%)`;
 }
 
 // Create a weather card element
@@ -66,9 +76,29 @@ function getWeatherImage(description) {
     if (description.includes('rain')) return '/icons/rainy.png';
     if (description.includes('cloud')) return '/icons/cloudy.png';
     if (description.includes('clear sky')) return '/icons/sunny.png';
-    // Add additional mappings as needed
     return '/icons/default.png'; // Fallback image
 }
+
+// Initialize navigation for cycling through weather cards
+function initializeNavigation(weatherLogs) {
+    const prevButton = document.getElementById('prev-button');
+    const nextButton = document.getElementById('next-button');
+
+    prevButton.addEventListener('click', () => {
+        if (currentStartIndex > 0) {
+            currentStartIndex--;
+            renderWeatherCards(weatherLogs);
+        }
+    });
+
+    nextButton.addEventListener('click', () => {
+        if (currentStartIndex + 3 < weatherLogs.length) {
+            currentStartIndex++;
+            renderWeatherCards(weatherLogs);
+        }
+    });
+}
+
 // Register service worker
 function registerServiceWorker() {
     if ('serviceWorker' in navigator) {
@@ -114,34 +144,6 @@ function subscribeToPushNotifications() {
         });
     }
 }
-navigator.serviceWorker.ready.then((registration) => {
-    registration.pushManager.subscribe({
-        userVisibleOnly: true,
-        applicationServerKey: urlBase64ToUint8Array(vapidPublicKey), // Use your actual VAPID public key
-    })
-    .then((subscription) => {
-        console.log('Push subscription successful:', subscription);
-
-        // Send subscription to the server
-        fetch('/subscribe', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(subscription),
-        })
-        .then((response) => response.json())
-        .then((data) => {
-            console.log('Server response:', data);
-        })
-        .catch((error) => {
-            console.error('Failed to send subscription to server:', error);
-        });
-    })
-    .catch((error) => {
-        console.error('Push subscription failed:', error);
-    });
-});
 
 // Utility: Convert VAPID key to correct format
 function urlBase64ToUint8Array(base64String) {

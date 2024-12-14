@@ -1,64 +1,91 @@
+/* Carousel container */
 body {
     font-family: Arial, sans-serif;
-    margin: 20px;
     background-color: #f0f8ff;
 }
-
-h1 {
-    text-align: center;
-    font-size: 2.5em;
-    color: #333;
-    margin-bottom: 20px;
-}
-
-#weather-container {
+#carousel-container {
     display: flex;
-    flex-wrap: wrap;
+    align-items: center;
     justify-content: center;
-    gap: 20px;
+    width: 100%;
+    overflow: hidden;  /* Hide extra cards */
+    position: relative;
+    margin: 10px auto;
+    padding: 0 5px;
 }
 
+/* Weather container (carousel area) */
+.carousel {
+    display: flex;
+    gap: 10px;
+    transition: transform 0.5s ease-in-out; /* Add sliding transition */
+    width: 300%; /* Ensure space for 3 cards (each taking 1/3rd of the width) */
+}
+
+/* Weather cards */
 .weather-card {
-    background-color: #ffffff;
-    border: 1px solid #ddd;
+    flex: 0 0 calc(33.333% - 20px); /* Each card takes up 1/3rd of the container width */
+    height: auto;
+    background-color: #fff;
     border-radius: 10px;
+    border: 1px solid #ddd; /* Set the border to a grey color */
     box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-    width: 200px;
-    padding: 15px;
     text-align: center;
-    transition: transform 0.2s ease;
+    padding: 6px;
+    margin: 0;
 }
 
-.weather-card:hover {
-    transform: translateY(-5px);
-    box-shadow: 0 6px 10px rgba(0, 0, 0, 0.15);
+
+.weather-card img {
+    max-width: 50%; /* Scale image proportionally */
+    height: auto;
+    margin: 10px auto;
 }
 
 .weather-card h2 {
-    font-size: 1.2em;
-    color: #555;
-    margin: 10px 0;
+    font-size: 1.5rem;
+    margin-bottom: 5px;
 }
 
 .weather-card h3 {
-    font-size: 1em;
-    color: #777;
-    margin: 5px 0;
-}
-
-.weather-card .weather-icon {
-    font-size: 2.5em;
-    margin: 10px 0;
+    font-size: 1.3rem;
+    color: #555;
+    margin-bottom: 10px;
 }
 
 .weather-card p {
-    font-size: 1em;
-    color: #333;
     margin: 5px 0;
+    font-size: 1.3rem;
 }
-.weather-image {
-  width: 150px;
-  height: 150px;
-  object-fit: contain;
-  margin: 10px auto;
+
+/* Carousel buttons */
+.carousel-button {
+    background-color: #007BFF;
+    border: none;
+    color: white;
+    font-size: 2rem;
+    padding: 10px 20px;
+    cursor: pointer;
+    border-radius: 50%;
+    height: 50px;
+    width: 50px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    z-index: 10;
+}
+
+#prev-button {
+    left: 10px;
+}
+
+#next-button {
+    right: 10px;
+}
+
+.carousel-button:hover {
+    background-color: #0056b3;
 }
