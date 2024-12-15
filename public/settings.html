@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Settings</title>
+    <link rel="icon" sizes="192x192" href="/icons/weather-icon-192x192.png" />
+    <link rel="icon" sizes="512x512" href="/icons/weather-icon-512x512.png" />
+    <link rel="icon" href="/icons/favicon.png" type="image/png" />
+    <link rel="stylesheet" href="settings.css">
+</head>
+<body>
+    <div class="container">
+        <h1>Settings</h1>
+        <p>Customize your preferences here:</p>
+
+        <!-- Push Notifications -->
+        <div class="switch-container">
+            <label for="push-notifications">Enable Push Notifications</label>
+            <input type="checkbox" id="push-notifications" checked>
+        </div>
+
+        <!-- Location Change -->
+        <div class="location-container">
+            <label for="location-input">Change Location</label>
+            <input type="text" id="location-input" placeholder="Enter new location" value="Sydney">
+        </div>
+
+        <!-- Save Settings -->
+        <button id="save-settings">Save Settings</button>
+        <button id="back-button">Go Back</button>
+    </div>
+
+    <script src="settings.js"></script>
+</body>
+</html>

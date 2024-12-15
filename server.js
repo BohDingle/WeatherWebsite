@@ -39,9 +39,22 @@ function initDatabase() {
             date TEXT UNIQUE
         )`
     );
+    db.run(
+        `CREATE TABLE IF NOT EXISTS settings (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            pushNotifications BOOLEAN,
+            location TEXT
+        )`
+    );
+    // Set default settings if not already set
+    db.get('SELECT * FROM settings WHERE id = 1', (err, row) => {
+        if (!row) {
+            db.run('INSERT INTO settings (pushNotifications, location) VALUES (?, ?)', [true, 'Sydney']);
+        }
+    });
 }
 
-const pushSubscriptions = []; // In-memory storage for push subscriptions
+let pushSubscriptions = []; // In-memory storage for push subscriptions
 
 // Fetch and store weather data
 async function fetchWeatherData() {
@@ -90,7 +103,6 @@ function extractDailyForecast(data) {
     return dailyForecast;
 }
 
-// Send push notifications to subscribers
 function sendPushNotifications() {
     if (pushSubscriptions.length === 0) {
         console.log('No subscriptions available');
@@ -108,11 +120,16 @@ function sendPushNotifications() {
                 console.log(`Notification sent to subscriber ${index}`);
             })
             .catch((err) => {
-                console.error('Error sending notification:', err);
+                if (err.statusCode === 410) {
+                    // Remove expired subscription from the list
+                    console.log(`Subscription ${index} expired or unsubscribed, removing it from the list`);
+                    pushSubscriptions.splice(index, 1);
+                } else {
+                    console.error('Error sending notification:', err);
+                }
             });
     });
 }
-
 
 
 // API: Fetch weather data from the database
@@ -136,13 +153,37 @@ app.post('/subscribe', express.json(), (req, res) => {
         return res.status(400).json({ error: 'Invalid subscription' });
     }
 
+    // Add the new subscription to the list
     pushSubscriptions.push(subscription);
+    console.log('New push subscription added:', subscription);
+
     res.status(201).json({ message: 'Subscription added successfully' });
 });
 
+// API: Get and Save Settings
+app.get('/settings', (req, res) => {
+    db.get('SELECT * FROM settings WHERE id = 1', (err, row) => {
+        if (err) {
+            return res.status(500).json({ error: 'Error fetching settings' });
+        }
+        res.json(row);
+    });
+});
+
+app.post('/settings', express.json(), (req, res) => {
+    const { pushNotifications, location } = req.body;
+
+    db.run('UPDATE settings SET pushNotifications = ?, location = ? WHERE id = 1', [pushNotifications, location], function (err) {
+        if (err) {
+            return res.status(500).json({ error: 'Error saving settings' });
+        }
+        res.json({ pushNotifications, location });
+    });
+});
+
 // Schedule tasks
-cron.schedule('0 9 * * *', fetchWeatherData); // Fetch weather daily at 9 AM
-cron.schedule('0 9 * * *', sendPushNotifications); // Send notifications daily at 10 AM
+cron.schedule('* * * * *', fetchWeatherData); // Fetch weather daily at 9 AM
+cron.schedule('* * * * *', sendPushNotifications); // Send notifications daily at 10 AM
 
 // Serve static files
 app.use(express.static(path.join(__dirname, 'public'), { maxAge: '1d' }));

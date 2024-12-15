@@ -1,6 +1,29 @@
 const vapidPublicKey = 'BA5hCLGNy8sMVOWuI7qm3RNmD-Bj220NFiQq0s07W4MMy-yCBWV3J48VBgF4CjEosZPDOsvjMaPOG-blTeOp5E0';
 let currentStartIndex = 0; // Track the current start index for sliding weather cards
 
+// This function registers the service worker
+function registerServiceWorker() {
+    if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register('/service-worker.js')
+            .then(function(registration) {
+                console.log('Service Worker registered with scope:', registration.scope);
+            })
+            .catch(function(error) {
+                console.error('Service Worker registration failed:', error);
+            });
+    } else {
+        console.log('Service Worker not supported in this browser.');
+    }
+}
+
+// Call registerServiceWorker once the DOM is ready
+document.addEventListener('DOMContentLoaded', function() {
+    registerServiceWorker();  // This will register the service worker when the page is loaded
+});
+
+function goToSettings() {
+    window.location.href = 'settings.html'; // Replace with the actual page URL
+}
 document.addEventListener('DOMContentLoaded', async () => {
     try {
         const weatherLogs = await fetchWeatherData();
@@ -16,6 +39,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     subscribeToPushNotifications();
 });
 
+
 // Fetch weather data from the API
 async function fetchWeatherData() {
     try {
@@ -28,7 +52,7 @@ async function fetchWeatherData() {
     }
 }
 
-// Render weather cards, keeping only 3 visible at a time
+// Updated renderWeatherCards function for mobile behavior
 function renderWeatherCards(weatherLogs) {
     const weatherContainer = document.getElementById('weather-container');
     weatherContainer.innerHTML = ''; // Clear previous content
@@ -38,11 +62,41 @@ function renderWeatherCards(weatherLogs) {
         weatherContainer.appendChild(card);
     });
 
+    const isMobile = window.innerWidth <= 768; // Check if it's a mobile view
+    const visibleCards = isMobile ? 1 : 3; // Show 1 card on mobile, 3 on desktop
+
     // Apply a translation to the weather container for the slide effect
-    const translateX = -currentStartIndex * 100 / 3; // Adjust based on how many cards are visible
+    const translateX = -currentStartIndex * (100 / visibleCards);
     const carousel = document.querySelector('.carousel');
     carousel.style.transform = `translateX(${translateX}%)`;
 }
+
+// Updated initializeNavigation function for mobile behavior
+function initializeNavigation(weatherLogs) {
+    const prevButton = document.getElementById('prev-button');
+    const nextButton = document.getElementById('next-button');
+
+    prevButton.addEventListener('click', () => {
+        if (currentStartIndex > 0) {
+            currentStartIndex--;
+            renderWeatherCards(weatherLogs);
+        }
+    });
+
+    nextButton.addEventListener('click', () => {
+        const isMobile = window.innerWidth <= 768; // Check if it's a mobile view
+        const visibleCards = isMobile ? 1 : 3; // Show 1 card on mobile, 3 on desktop
+
+        if (currentStartIndex + visibleCards < weatherLogs.length) {
+            currentStartIndex++;
+            renderWeatherCards(weatherLogs);
+        }
+    });
+
+    // Optional: Adjust carousel on window resize
+    window.addEventListener('resize', () => renderWeatherCards(weatherLogs));
+}
+
 
 // Create a weather card element
 function createWeatherCard(log) {
@@ -79,39 +133,17 @@ function getWeatherImage(description) {
     return '/icons/default.png'; // Fallback image
 }
 
-// Initialize navigation for cycling through weather cards
-function initializeNavigation(weatherLogs) {
-    const prevButton = document.getElementById('prev-button');
-    const nextButton = document.getElementById('next-button');
-
-    prevButton.addEventListener('click', () => {
-        if (currentStartIndex > 0) {
-            currentStartIndex--;
-            renderWeatherCards(weatherLogs);
-        }
-    });
-
-    nextButton.addEventListener('click', () => {
-        if (currentStartIndex + 3 < weatherLogs.length) {
-            currentStartIndex++;
-            renderWeatherCards(weatherLogs);
-        }
-    });
-}
 
 // Register service worker
-function registerServiceWorker() {
-    if ('serviceWorker' in navigator) {
-        navigator.serviceWorker
-            .register('/service-worker.js')
-            .then((registration) => {
-                console.log('Service Worker registered:', registration);
-            })
-            .catch((error) => {
-                console.error('Service Worker registration failed:', error);
-            });
-    }
+if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.getRegistrations().then((registrations) => {
+        registrations.forEach((registration) => registration.unregister());
+    });
+    navigator.serviceWorker.register('/service-worker.js').then(() => {
+        console.log('New service worker registered');
+    });
 }
+
 
 // Subscribe to push notifications
 function subscribeToPushNotifications() {
