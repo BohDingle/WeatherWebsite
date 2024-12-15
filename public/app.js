@@ -39,7 +39,7 @@ function renderWeatherCards(weatherLogs) {
     });
 
     // Apply a translation to the weather container for the slide effect
-    const translateX = -currentStartIndex * 102 / 3; // Adjust based on how many cards are visible
+    const translateX = -currentStartIndex * 100 / 3; // Adjust based on how many cards are visible
     const carousel = document.querySelector('.carousel');
     carousel.style.transform = `translateX(${translateX}%)`;
 }

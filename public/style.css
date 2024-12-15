@@ -28,18 +28,32 @@ body {
     height: auto;
     background-color: #fff;
     border-radius: 10px;
-    border: 1px solid #ddd; /* Set the border to a grey color */
+    border: 2px solid #ddd; /* Set the border to a grey color */
     box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
     text-align: center;
-    padding: 6px;
+    padding: 5px;
     margin: 0;
 }
+
+/* Media query for mobile devices (screen width 768px or smaller) */
+@media (max-width: 768px) {
+    /* Adjust the weather card to take up the full width */
+    .weather-card {
+        flex: 0 0 100%; /* Set to 100% width on smaller screens */
+    }
+
+    /* Adjust the carousel container to center the cards */
+    .carousel {
+        justify-content: center; /* Center the cards in the carousel */
+    }
+}
+
 
 
 .weather-card img {
     max-width: 50%; /* Scale image proportionally */
     height: auto;
-    margin: 10px auto;
+    margin: 5px auto;
 }
 
 .weather-card h2 {

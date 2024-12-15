@@ -8,6 +8,10 @@ const ASSETS = [
     '/icons/cloudy.png',
     '/icons/sunny.png',
     '/icons/default.png',
+    '/icons/weather-icon-192x192.png',
+    '/icons/weather-icon-512x512.png',
+    '/screenshots/screenshot1.png',
+    '/screenshots/screenshot2.png'
 ];
 
 
